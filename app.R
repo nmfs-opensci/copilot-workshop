@@ -8,7 +8,7 @@ erddap_url <- "https://coastwatch.pfeg.noaa.gov/erddap/"
 dataset_id <- "ncdcOisst21Agg_LonPM180"
 CACHE_DIR <- file.path(path.expand("~"), ".cache")
 CACHE_MAX_AGE_HOURS <- 24
-NA_COLOR <- "#000000"
+NA_MARKER_COLOR <- "#000000"
 
 grid_points <- surveyjoin::nwfsc_grid
 grid_points <- grid_points[grid_points$survey == "NWFSC.Combo", , drop = FALSE]
@@ -40,7 +40,7 @@ get_available_dates <- function() {
 }
 
 cache_path <- file.path(CACHE_DIR, "nwfsc_sst_dates.rds")
-dir.create(dirname(cache_path), showWarnings = FALSE, recursive = TRUE)
+dir.create(CACHE_DIR, showWarnings = FALSE, recursive = TRUE)
 cache_valid <- function(path, max_age_hours = CACHE_MAX_AGE_HOURS) {
   if (!file.exists(path)) {
     return(FALSE)
@@ -92,7 +92,6 @@ nearest_indices <- function(grid, target) {
     return(rep(1L, length(target)))
   }
   idx <- findInterval(target, grid, all.inside = TRUE)
-  idx[idx >= length(grid)] <- length(grid) - 1L
   left <- grid[idx]
   right <- grid[idx + 1L]
   idx + (abs(target - right) < abs(target - left))
@@ -159,7 +158,7 @@ server <- function(input, output, session) {
     req(data)
     validate(need(!all(is.na(data$sst)), "No SST values available for the selected date."))
 
-    pal <- colorNumeric(viridis(256), domain = data$sst, na.color = NA_COLOR)
+    pal <- colorNumeric(viridis(256), domain = data$sst, na.color = NA_MARKER_COLOR)
 
     leaflet(data) %>%
       addProviderTiles("CartoDB.Positron") %>%

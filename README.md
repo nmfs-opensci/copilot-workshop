@@ -15,6 +15,8 @@ install.packages(c("shiny", "leaflet", "rerddap", "viridis"))
 pak::pkg_install("DFO-NOAA-Pacific/surveyjoin")
 ```
 
+`surveyjoin` is installed from GitHub (not CRAN), so keep that step separate.
+
 ## Run the app
 
 From the repository root, run:
