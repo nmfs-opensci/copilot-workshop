@@ -8,6 +8,7 @@ library(viridis)
 ERDDAP_DATASET_ID <- "ncdcOisst21Agg_LonPM180"
 BBOX_BUFFER_DEGREES <- 0.5
 MAX_LOOKBACK_DAYS <- 7
+POPUP_TEMPLATE <- "<strong>Survey Point ID:</strong> %s<br/><strong>SST:</strong> %s °C<br/><strong>Lon:</strong> %.4f<br/><strong>Lat:</strong> %.4f"
 
 nwfsc_grid_raw <- surveyjoin::nwfsc_grid()
 
@@ -30,8 +31,15 @@ if (inherits(nwfsc_grid_raw, "sf")) {
     nwfsc_points$lat <- coords[, 2]
   }
 
-  lon_column <- "lon"
-  lat_column <- "lat"
+  lon_candidates <- names(nwfsc_points)[grepl("lon", names(nwfsc_points), ignore.case = TRUE)]
+  lat_candidates <- names(nwfsc_points)[grepl("lat", names(nwfsc_points), ignore.case = TRUE)]
+
+  if (length(lon_candidates) == 0 || length(lat_candidates) == 0) {
+    stop("nwfsc_grid data must include longitude and latitude columns.")
+  }
+
+  lon_column <- lon_candidates[1]
+  lat_column <- lat_candidates[1]
 } else {
   blank_name <- names(nwfsc_grid_raw) == ""
   if (any(blank_name)) {
@@ -151,25 +159,25 @@ server <- function(input, output, session) {
       lat_matches <- names(sst_data)[grepl("lat", names(sst_data))]
       sst_matches <- names(sst_data)[grepl("sst", names(sst_data))]
 
-      sst_lon_column <- if (length(lon_matches) > 0) lon_matches[1] else NA_character_
-      sst_lat_column <- if (length(lat_matches) > 0) lat_matches[1] else NA_character_
-      sst_column <- if (length(sst_matches) > 0) sst_matches[1] else NA_character_
+      erddap_lon_column <- if (length(lon_matches) > 0) lon_matches[1] else NA_character_
+      erddap_lat_column <- if (length(lat_matches) > 0) lat_matches[1] else NA_character_
+      erddap_sst_column <- if (length(sst_matches) > 0) sst_matches[1] else NA_character_
 
-      if (!is.na(sst_lon_column) && !is.na(sst_lat_column) && !is.na(sst_column)) {
+      if (!is.na(erddap_lon_column) && !is.na(erddap_lat_column) && !is.na(erddap_sst_column)) {
         sst_points <- sf::st_as_sf(
           sst_data,
-          coords = c(sst_lon_column, sst_lat_column),
+          coords = c(erddap_lon_column, erddap_lat_column),
           crs = 4326,
           remove = FALSE
         )
 
         nearest_index <- sf::st_nearest_feature(point_data, sst_points)
-        point_data$sst <- sst_points[[sst_column]][nearest_index]
+        point_data$sst <- sst_points[[erddap_sst_column]][nearest_index]
       }
     }
 
     point_data$popup_text <- sprintf(
-      "<strong>Survey Point ID:</strong> %s<br/><strong>SST:</strong> %s °C<br/><strong>Lon:</strong> %.4f<br/><strong>Lat:</strong> %.4f",
+      POPUP_TEMPLATE,
       point_data[[id_column]],
       ifelse(
         is.na(point_data$sst),
