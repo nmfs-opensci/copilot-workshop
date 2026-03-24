@@ -32,12 +32,13 @@ get_available_dates <- function() {
   time_range <- as.POSIXct(range_values, origin = origin, tz = "UTC")
 
   dimension_text <- dimension[1]
-  time_dimension_match <- regexpr("nValues=([0-9]+)", dimension_text)
-  if (time_dimension_match[1] == -1) {
+  time_dimension_match <- regexec("nValues=([0-9]+)", dimension_text)
+  time_dimension_values <- regmatches(dimension_text, time_dimension_match)[[1]]
+  if (length(time_dimension_values) < 2) {
     message("Unable to parse time dimension count from ERDDAP metadata.")
     time_dimension_count <- NA_integer_
   } else {
-    time_dimension_count <- as.integer(sub(".*nValues=([0-9]+).*", "\\1", dimension_text))
+    time_dimension_count <- as.integer(time_dimension_values[2])
   }
   if (is.na(time_dimension_count) || time_dimension_count < 2) {
     time_values <- seq(time_range[1], time_range[2], by = "1 day")
@@ -101,10 +102,8 @@ nearest_grid_indices <- function(grid_values, target_values) {
     return(rep(1L, length(target_values)))
   }
   idx <- findInterval(target_values, grid_values, all.inside = TRUE)
-  idx <- pmin(idx, length(grid_values) - 1L)
-  next_idx <- pmin(idx + 1L, length(grid_values))
   left <- grid_values[idx]
-  right <- grid_values[next_idx]
+  right <- grid_values[idx + 1L]
   idx + ifelse(abs(target_values - right) < abs(target_values - left), 1L, 0L)
 }
 
@@ -146,8 +145,7 @@ server <- function(input, output, session) {
       lon_index <- nearest_grid_indices(lon_values, grid_points$lon)
 
       output_points <- grid_points
-      index_pairs <- cbind(lat_index, lon_index)
-      output_points$sst <- sst_matrix[index_pairs]
+      output_points$sst <- sst_matrix[cbind(lat_index, lon_index)]
       output_points
     }, error = function(e) {
       error_message(conditionMessage(e))
