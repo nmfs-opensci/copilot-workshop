@@ -8,7 +8,7 @@ library(viridis)
 ERDDAP_DATASET_ID <- "ncdcOisst21Agg_LonPM180"
 BBOX_BUFFER_DEGREES <- 0.5
 MAX_LOOKBACK_DAYS <- 7
-POPUP_TEMPLATE <- "<strong>Survey Point ID:</strong> %s<br/><strong>SST:</strong> %s °C<br/><strong>Lon:</strong> %.4f<br/><strong>Lat:</strong> %.4f"
+SST_POPUP_TEMPLATE <- "<strong>Survey Point ID:</strong> %s<br/><strong>SST:</strong> %s °C<br/><strong>Lon:</strong> %.4f<br/><strong>Lat:</strong> %.4f"
 MARKER_RADIUS <- 5
 MARKER_WEIGHT <- 0.6
 MARKER_COLOR <- "#2c3e50"
@@ -43,7 +43,7 @@ if (inherits(nwfsc_grid_raw, "sf")) {
 } else {
   blank_name <- names(nwfsc_grid_raw) == ""
   if (any(blank_name)) {
-    names(nwfsc_grid_raw)[blank_name] <- "grid_id"
+    names(nwfsc_grid_raw)[blank_name] <- "point_id"
   }
 
   lon_candidates <- names(nwfsc_grid_raw)[grepl("lon", names(nwfsc_grid_raw), ignore.case = TRUE)]
@@ -71,8 +71,8 @@ id_candidates <- names(nwfsc_points)[
     grepl("id$", names(nwfsc_points), ignore.case = TRUE)
 ]
 if (length(id_candidates) == 0) {
-  nwfsc_points$grid_id <- seq_len(nrow(nwfsc_points))
-  id_column <- "grid_id"
+  nwfsc_points$point_id <- seq_len(nrow(nwfsc_points))
+  id_column <- "point_id"
 } else {
   id_column <- id_candidates[1]
 }
@@ -177,7 +177,7 @@ server <- function(input, output, session) {
     }
 
     point_data$popup_text <- sprintf(
-      POPUP_TEMPLATE,
+      SST_POPUP_TEMPLATE,
       point_data[[id_column]],
       ifelse(
         is.na(point_data$sst),
