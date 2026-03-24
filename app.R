@@ -3,7 +3,6 @@ library(leaflet)
 library(rerddap)
 library(surveyjoin)
 library(sf)
-library(dplyr)
 library(viridis)
 
 ERDDAP_DATASET_ID <- "ncdcOisst21Agg_LonPM180"
@@ -11,32 +10,64 @@ BBOX_BUFFER_DEGREES <- 0.5
 MAX_LOOKBACK_DAYS <- 7
 
 nwfsc_grid_raw <- surveyjoin::nwfsc_grid()
+
 if (inherits(nwfsc_grid_raw, "sf")) {
-  nwfsc_grid <- nwfsc_grid_raw
+  nwfsc_points <- nwfsc_grid_raw
+  if (is.na(sf::st_crs(nwfsc_points))) {
+    sf::st_crs(nwfsc_points) <- 4326
+  }
+  nwfsc_points <- sf::st_transform(nwfsc_points, 4326)
+
+  if (any(sf::st_geometry_type(nwfsc_points) != "POINT")) {
+    nwfsc_points <- sf::st_centroid(nwfsc_points)
+  }
+
+  if (!("lon" %in% names(nwfsc_points)) || !("lat" %in% names(nwfsc_points))) {
+    coords <- sf::st_coordinates(nwfsc_points)
+    nwfsc_points$lon <- coords[, 1]
+    nwfsc_points$lat <- coords[, 2]
+  }
+
+  lon_column <- "lon"
+  lat_column <- "lat"
 } else {
-  nwfsc_grid <- sf::st_as_sf(nwfsc_grid_raw)
-}
+  blank_name <- names(nwfsc_grid_raw) == ""
+  if (any(blank_name)) {
+    names(nwfsc_grid_raw)[blank_name] <- "grid_id"
+  }
 
-if (is.na(sf::st_crs(nwfsc_grid))) {
-  sf::st_crs(nwfsc_grid) <- 4326
-}
+  lon_candidates <- names(nwfsc_grid_raw)[grepl("lon", names(nwfsc_grid_raw), ignore.case = TRUE)]
+  lat_candidates <- names(nwfsc_grid_raw)[grepl("lat", names(nwfsc_grid_raw), ignore.case = TRUE)]
 
-nwfsc_grid <- sf::st_transform(nwfsc_grid, 4326)
+  if (length(lon_candidates) == 0 || length(lat_candidates) == 0) {
+    stop("nwfsc_grid data must include longitude and latitude columns.")
+  }
+
+  lon_column <- lon_candidates[1]
+  lat_column <- lat_candidates[1]
+
+  nwfsc_points <- sf::st_as_sf(
+    nwfsc_grid_raw,
+    coords = c(lon_column, lat_column),
+    crs = 4326,
+    remove = FALSE
+  )
+}
 
 palette_base <- viridis(256)
 
-id_candidates <- names(nwfsc_grid)[
-  grepl("grid", names(nwfsc_grid), ignore.case = TRUE) |
-    grepl("id$", names(nwfsc_grid), ignore.case = TRUE)
+id_candidates <- names(nwfsc_points)[
+  grepl("grid", names(nwfsc_points), ignore.case = TRUE) |
+    grepl("id$", names(nwfsc_points), ignore.case = TRUE)
 ]
 if (length(id_candidates) == 0) {
-  nwfsc_grid$grid_id <- seq_len(nrow(nwfsc_grid))
+  nwfsc_points$grid_id <- seq_len(nrow(nwfsc_points))
   id_column <- "grid_id"
 } else {
   id_column <- id_candidates[1]
 }
 
-bbox <- sf::st_bbox(nwfsc_grid)
+bbox <- sf::st_bbox(nwfsc_points)
 buffer_degrees <- BBOX_BUFFER_DEGREES
 bbox_expanded <- bbox
 bbox_expanded[c("xmin", "ymin")] <- bbox[c("xmin", "ymin")] - buffer_degrees
@@ -78,7 +109,7 @@ fetch_sst <- function(target_date) {
 }
 
 ui <- fluidPage(
-  titlePanel("NWFSC Survey Grid Mean SST"),
+  titlePanel("NWFSC Survey Point SST"),
   sidebarLayout(
     sidebarPanel(
       dateInput(
@@ -104,78 +135,50 @@ server <- function(input, output, session) {
     })
   }, ignoreNULL = FALSE)
 
-  grid_sst <- reactive({
+  point_sst <- reactive({
     result <- sst_result()
 
-    if (is.null(result$data)) {
-      grid_data <- nwfsc_grid
-      grid_data$mean_sst <- NA_real_
-      grid_data$popup_text <- sprintf(
-        "<strong>Grid Cell ID:</strong> %s<br/><strong>Mean SST:</strong> No data",
-        grid_data[[id_column]]
-      )
-      return(grid_data)
+    point_data <- nwfsc_points
+    point_data$sst <- NA_real_
+
+    if (!is.null(result$data)) {
+      sst_data <- result$data
+      names(sst_data) <- tolower(names(sst_data))
+
+      lon_matches <- names(sst_data)[grepl("lon", names(sst_data))]
+      lat_matches <- names(sst_data)[grepl("lat", names(sst_data))]
+      sst_matches <- names(sst_data)[grepl("sst", names(sst_data))]
+
+      sst_lon_column <- if (length(lon_matches) > 0) lon_matches[1] else NA_character_
+      sst_lat_column <- if (length(lat_matches) > 0) lat_matches[1] else NA_character_
+      sst_column <- if (length(sst_matches) > 0) sst_matches[1] else NA_character_
+
+      if (!is.na(sst_lon_column) && !is.na(sst_lat_column) && !is.na(sst_column)) {
+        sst_points <- sf::st_as_sf(
+          sst_data,
+          coords = c(sst_lon_column, sst_lat_column),
+          crs = 4326,
+          remove = FALSE
+        )
+
+        nearest_index <- sf::st_nearest_feature(point_data, sst_points)
+        point_data$sst <- sst_points[[sst_column]][nearest_index]
+      }
     }
 
-    sst_data <- result$data
-    names(sst_data) <- tolower(names(sst_data))
-
-    lon_matches <- names(sst_data)[grepl("lon", names(sst_data))]
-    lat_matches <- names(sst_data)[grepl("lat", names(sst_data))]
-    sst_matches <- names(sst_data)[grepl("sst", names(sst_data))]
-
-    lon_column <- if (length(lon_matches) > 0) lon_matches[1] else NA_character_
-    lat_column <- if (length(lat_matches) > 0) lat_matches[1] else NA_character_
-    sst_column <- if (length(sst_matches) > 0) sst_matches[1] else NA_character_
-
-    if (is.na(lon_column) || is.na(lat_column) || is.na(sst_column)) {
-      grid_data <- nwfsc_grid
-      grid_data$mean_sst <- NA_real_
-      grid_data$popup_text <- sprintf(
-        "<strong>Grid Cell ID:</strong> %s<br/><strong>Mean SST:</strong> No data",
-        grid_data[[id_column]]
-      )
-      return(grid_data)
-    }
-
-    sst_points <- sf::st_as_sf(
-      sst_data,
-      coords = c(lon_column, lat_column),
-      crs = 4326,
-      remove = FALSE
-    )
-
-    joined <- sf::st_join(sst_points, nwfsc_grid[, id_column], join = sf::st_within)
-
-    if (!(id_column %in% names(joined))) {
-      grid_data <- nwfsc_grid
-      grid_data$mean_sst <- NA_real_
-      grid_data$popup_text <- sprintf(
-        "<strong>Grid Cell ID:</strong> %s<br/><strong>Mean SST:</strong> No data",
-        grid_data[[id_column]]
-      )
-      return(grid_data)
-    }
-
-    mean_sst <- joined |>
-      sf::st_drop_geometry() |>
-      group_by(.data[[id_column]]) |>
-      summarize(mean_sst = mean(.data[[sst_column]], na.rm = TRUE), .groups = "drop")
-
-    grid_data <- nwfsc_grid |>
-      left_join(mean_sst, by = id_column)
-
-    grid_data$popup_text <- sprintf(
-      "<strong>Grid Cell ID:</strong> %s<br/><strong>Mean SST:</strong> %s °C",
-      grid_data[[id_column]],
+    point_data$popup_text <- sprintf(
+      "<strong>Survey Point ID:</strong> %s<br/><strong>SST:</strong> %s °C<br/><strong>Lon:</strong> %.4f<br/><strong>Lat:</strong> %.4f",
+      point_data[[id_column]],
       ifelse(
-        is.na(grid_data$mean_sst),
+        is.na(point_data$sst),
         "No data",
-        format(round(grid_data$mean_sst, 2), nsmall = 2)
-      )
+        format(round(point_data$sst, 2), nsmall = 2)
+      ),
+      point_data[[lon_column]],
+      point_data[[lat_column]]
     )
 
-    grid_data
+    point_data
   })
 
   output$status <- renderText({
@@ -198,24 +201,29 @@ server <- function(input, output, session) {
   })
 
   output$map <- renderLeaflet({
-    grid_data <- grid_sst()
-    pal <- colorNumeric(palette_base, domain = grid_data$mean_sst, na.color = "transparent")
+    point_data <- point_sst()
+    pal <- colorNumeric(palette_base, domain = point_data$sst, na.color = "transparent")
 
-    leaflet(grid_data) |>
+    leaflet() |>
       addProviderTiles("CartoDB.Positron") |>
       setView(lng = bbox_center["lng"], lat = bbox_center["lat"], zoom = 6) |>
-      addPolygons(
-        fillColor = ~pal(mean_sst),
-        fillOpacity = 0.7,
+      addCircleMarkers(
+        data = point_data,
+        lng = point_data[[lon_column]],
+        lat = point_data[[lat_column]],
+        radius = 5,
+        stroke = TRUE,
+        weight = 0.6,
         color = "#2c3e50",
-        weight = 0.4,
-        popup = ~popup_text
+        fillColor = pal(point_data$sst),
+        fillOpacity = 0.8,
+        popup = point_data$popup_text
       ) |>
       addLegend(
         position = "bottomright",
         pal = pal,
-        values = ~mean_sst,
-        title = "Mean SST (°C)"
+        values = point_data$sst,
+        title = "SST (°C)"
       )
   })
 }
