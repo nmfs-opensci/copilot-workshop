@@ -9,6 +9,10 @@ ERDDAP_DATASET_ID <- "ncdcOisst21Agg_LonPM180"
 BBOX_BUFFER_DEGREES <- 0.5
 MAX_LOOKBACK_DAYS <- 7
 POPUP_TEMPLATE <- "<strong>Survey Point ID:</strong> %s<br/><strong>SST:</strong> %s °C<br/><strong>Lon:</strong> %.4f<br/><strong>Lat:</strong> %.4f"
+MARKER_RADIUS <- 5
+MARKER_WEIGHT <- 0.6
+MARKER_COLOR <- "#2c3e50"
+MARKER_FILL_OPACITY <- 0.8
 
 nwfsc_grid_raw <- surveyjoin::nwfsc_grid()
 
@@ -214,12 +218,12 @@ server <- function(input, output, session) {
       addProviderTiles("CartoDB.Positron") |>
       setView(lng = bbox_center["lng"], lat = bbox_center["lat"], zoom = 6) |>
       addCircleMarkers(
-        radius = 5,
+        radius = MARKER_RADIUS,
         stroke = TRUE,
-        weight = 0.6,
-        color = "#2c3e50",
+        weight = MARKER_WEIGHT,
+        color = MARKER_COLOR,
         fillColor = ~pal(sst),
-        fillOpacity = 0.8,
+        fillOpacity = MARKER_FILL_OPACITY,
         popup = ~popup_text
       ) |>
       addLegend(
