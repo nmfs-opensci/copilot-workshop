@@ -13,10 +13,12 @@ nwfsc_grid_raw <- surveyjoin::nwfsc_grid()
 
 if (inherits(nwfsc_grid_raw, "sf")) {
   nwfsc_points <- nwfsc_grid_raw
-  if (is.na(sf::st_crs(nwfsc_points))) {
+  current_crs <- sf::st_crs(nwfsc_points)
+  if (is.na(current_crs)) {
     sf::st_crs(nwfsc_points) <- 4326
+  } else if (!isTRUE(current_crs$epsg == 4326)) {
+    nwfsc_points <- sf::st_transform(nwfsc_points, 4326)
   }
-  nwfsc_points <- sf::st_transform(nwfsc_points, 4326)
 
   if (any(sf::st_geometry_type(nwfsc_points) != "POINT")) {
     nwfsc_points <- sf::st_centroid(nwfsc_points)
