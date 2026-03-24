@@ -17,8 +17,11 @@ if (inherits(nwfsc_grid_raw, "sf")) {
   current_crs <- sf::st_crs(nwfsc_points)
   if (is.na(current_crs)) {
     sf::st_crs(nwfsc_points) <- 4326
-  } else if (!isTRUE(current_crs$epsg == 4326)) {
-    nwfsc_points <- sf::st_transform(nwfsc_points, 4326)
+  } else {
+    current_epsg <- current_crs$epsg
+    if (is.null(current_epsg) || is.na(current_epsg) || current_epsg != 4326) {
+      nwfsc_points <- sf::st_transform(nwfsc_points, 4326)
+    }
   }
 
   if (any(sf::st_geometry_type(nwfsc_points) != "POINT")) {
@@ -31,15 +34,8 @@ if (inherits(nwfsc_grid_raw, "sf")) {
     nwfsc_points$lat <- coords[, 2]
   }
 
-  lon_candidates <- names(nwfsc_points)[grepl("lon", names(nwfsc_points), ignore.case = TRUE)]
-  lat_candidates <- names(nwfsc_points)[grepl("lat", names(nwfsc_points), ignore.case = TRUE)]
-
-  if (length(lon_candidates) == 0 || length(lat_candidates) == 0) {
-    stop("nwfsc_grid data must include longitude and latitude columns.")
-  }
-
-  lon_column <- lon_candidates[1]
-  lat_column <- lat_candidates[1]
+  lon_column <- "lon"
+  lat_column <- "lat"
 } else {
   blank_name <- names(nwfsc_grid_raw) == ""
   if (any(blank_name)) {
