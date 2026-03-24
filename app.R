@@ -44,7 +44,11 @@ cache_valid <- function(path, max_age_hours = CACHE_MAX_AGE_HOURS) {
   if (!file.exists(path)) {
     return(FALSE)
   }
-  age_hours <- as.numeric(difftime(Sys.time(), file.info(path)$mtime, units = "hours"))
+  file_info <- file.info(path)
+  if (is.na(file_info$mtime)) {
+    return(FALSE)
+  }
+  age_hours <- as.numeric(difftime(Sys.time(), file_info$mtime, units = "hours"))
   age_hours <= max_age_hours
 }
 available_dates <- tryCatch(
@@ -84,6 +88,7 @@ nearest_indices <- function(grid, target) {
     return(rep(1L, length(target)))
   }
   idx <- findInterval(target, grid, all.inside = TRUE)
+  idx[idx >= length(grid)] <- length(grid) - 1L
   left <- grid[idx]
   right <- grid[idx + 1L]
   idx + (abs(target - right) < abs(target - left))
