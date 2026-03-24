@@ -1,2 +1,3 @@
 # copilot-workshop
-template for workshop
+
+create a shiny app
