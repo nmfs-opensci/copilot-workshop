@@ -33,7 +33,7 @@ get_available_dates <- function() {
 
   dimension_text <- dimension[1]
   time_dimension_match <- regexpr("nValues=([0-9]+)", dimension_text)
-  if (length(time_dimension_match) == 0 || time_dimension_match[1] == -1) {
+  if (time_dimension_match[1] == -1) {
     message("Unable to parse time dimension count from ERDDAP metadata.")
     time_dimension_count <- NA_integer_
   } else {
@@ -102,8 +102,9 @@ nearest_grid_indices <- function(grid_values, target_values) {
   }
   idx <- findInterval(target_values, grid_values, all.inside = TRUE)
   idx <- pmin(idx, length(grid_values) - 1L)
+  next_idx <- pmin(idx + 1L, length(grid_values))
   left <- grid_values[idx]
-  right <- grid_values[idx + 1L]
+  right <- grid_values[next_idx]
   idx + ifelse(abs(target_values - right) < abs(target_values - left), 1L, 0L)
 }
 
@@ -145,7 +146,8 @@ server <- function(input, output, session) {
       lon_index <- nearest_grid_indices(lon_values, grid_points$lon)
 
       output_points <- grid_points
-      output_points$sst <- mapply(function(i, j) sst_matrix[i, j], lat_index, lon_index)
+      index_pairs <- cbind(lat_index, lon_index)
+      output_points$sst <- sst_matrix[index_pairs]
       output_points
     }, error = function(e) {
       error_message(conditionMessage(e))
