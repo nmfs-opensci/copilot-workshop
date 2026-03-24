@@ -10,6 +10,7 @@ CACHE_DIR <- file.path(path.expand("~"), ".cache")
 CACHE_MAX_AGE_HOURS <- 24
 NA_MARKER_COLOR <- "#000000"
 VIRIDIS_PALETTE_SIZE <- 256
+FALLBACK_DAYS <- 30
 
 grid_points <- surveyjoin::nwfsc_grid
 grid_points <- grid_points[grid_points$survey == "NWFSC.Combo", , drop = FALSE]
@@ -30,11 +31,11 @@ get_available_dates <- function() {
   origin <- sub(".*since ", "", units)
   time_range <- as.POSIXct(range_values, origin = origin, tz = "UTC")
 
-  n_values <- suppressWarnings(as.integer(sub(".*nValues=([0-9]+).*", "\\1", dimension)))
-  if (is.na(n_values) || n_values < 2) {
+  time_dimension_count <- suppressWarnings(as.integer(sub(".*nValues=([0-9]+).*", "\\1", dimension)))
+  if (is.na(time_dimension_count) || time_dimension_count < 2) {
     time_values <- seq(time_range[1], time_range[2], by = "1 day")
   } else {
-    time_values <- seq(time_range[1], time_range[2], length.out = n_values)
+    time_values <- seq(time_range[1], time_range[2], length.out = time_dimension_count)
   }
 
   unique(as.Date(time_values))
@@ -66,7 +67,7 @@ available_dates <- tryCatch(
       "Failed to fetch ERDDAP metadata. Check internet connectivity and ERDDAP availability: ",
       conditionMessage(e)
     )
-    seq(Sys.Date() - 30, Sys.Date(), by = "1 day")
+    seq(Sys.Date() - FALLBACK_DAYS, Sys.Date(), by = "1 day")
   }
 )
 
@@ -88,14 +89,14 @@ ui <- fluidPage(
   )
 )
 
-nearest_indices <- function(grid, target) {
-  if (length(grid) == 1) {
-    return(rep(1L, length(target)))
+nearest_grid_indices <- function(grid_values, target_values) {
+  if (length(grid_values) == 1) {
+    return(rep(1L, length(target_values)))
   }
-  idx <- findInterval(target, grid, all.inside = TRUE)
-  left <- grid[idx]
-  right <- grid[idx + 1L]
-  idx + (abs(target - right) < abs(target - left))
+  idx <- findInterval(target_values, grid_values, all.inside = TRUE)
+  left <- grid_values[idx]
+  right <- grid_values[idx + 1L]
+  idx + (abs(target_values - right) < abs(target_values - left))
 }
 
 server <- function(input, output, session) {
@@ -132,8 +133,8 @@ server <- function(input, output, session) {
       lat_values <- as.numeric(rownames(sst_matrix))
       lon_values <- as.numeric(colnames(sst_matrix))
 
-      lat_index <- nearest_indices(lat_values, grid_points$lat)
-      lon_index <- nearest_indices(lon_values, grid_points$lon)
+      lat_index <- nearest_grid_indices(lat_values, grid_points$lat)
+      lon_index <- nearest_grid_indices(lon_values, grid_points$lon)
 
       output_points <- grid_points
       output_points$sst <- sst_matrix[cbind(lat_index, lon_index)]
