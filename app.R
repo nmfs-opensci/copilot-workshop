@@ -43,7 +43,12 @@ if (inherits(nwfsc_grid_raw, "sf")) {
 } else {
   blank_name <- names(nwfsc_grid_raw) == ""
   if (any(blank_name)) {
-    names(nwfsc_grid_raw)[blank_name] <- "point_id"
+    blank_indices <- which(blank_name)
+    if (length(blank_indices) == 1) {
+      names(nwfsc_grid_raw)[blank_indices] <- "point_id"
+    } else {
+      names(nwfsc_grid_raw)[blank_indices] <- paste0("point_id_", seq_along(blank_indices))
+    }
   }
 
   lon_candidates <- names(nwfsc_grid_raw)[grepl("lon", names(nwfsc_grid_raw), ignore.case = TRUE)]
