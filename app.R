@@ -9,6 +9,7 @@ dataset_id <- "ncdcOisst21Agg_LonPM180"
 CACHE_DIR <- file.path(path.expand("~"), ".cache")
 CACHE_MAX_AGE_HOURS <- 24
 NA_MARKER_COLOR <- "#000000"
+VIRIDIS_PALETTE_SIZE <- 256
 
 grid_points <- surveyjoin::nwfsc_grid
 grid_points <- grid_points[grid_points$survey == "NWFSC.Combo", , drop = FALSE]
@@ -158,7 +159,11 @@ server <- function(input, output, session) {
     req(data)
     validate(need(!all(is.na(data$sst)), "No SST values available for the selected date."))
 
-    pal <- colorNumeric(viridis(256), domain = data$sst, na.color = NA_MARKER_COLOR)
+    pal <- colorNumeric(
+      viridis(VIRIDIS_PALETTE_SIZE),
+      domain = data$sst,
+      na.color = NA_MARKER_COLOR
+    )
 
     leaflet(data) %>%
       addProviderTiles("CartoDB.Positron") %>%
