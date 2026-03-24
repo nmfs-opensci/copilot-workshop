@@ -84,7 +84,6 @@ nearest_indices <- function(grid, target) {
     return(rep(1L, length(target)))
   }
   idx <- findInterval(target, grid, all.inside = TRUE)
-  idx <- pmin(pmax(idx, 1L), length(grid) - 1L)
   left <- grid[idx]
   right <- grid[idx + 1L]
   idx + (abs(target - right) < abs(target - left))
