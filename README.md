@@ -20,4 +20,5 @@ for the NWFSC survey grid points using NOAA ERDDAP data.
 shiny::runApp("app.R")
 ```
 
-3. Open your browser to <http://localhost:3838> if it does not open automatically.
+3. Open the URL printed in the console output (Shiny selects an available local
+   port when it starts).

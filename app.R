@@ -24,13 +24,24 @@ get_available_dates <- function() {
   time_meta <- info_list$alldata$time
   range_row <- time_meta[time_meta$attribute_name == "actual_range", , drop = FALSE]
   if (nrow(range_row) == 0) {
-    stop("Unable to determine dataset time range from ERDDAP metadata.")
+    stop(sprintf(
+      "Unable to determine time range for %s from %s.",
+      dataset_id,
+      erddap_url
+    ))
   }
   values <- trimws(strsplit(range_row$value[1], ",")[[1]])
   numeric_range <- as.numeric(values)
   start_time <- as.POSIXct(numeric_range[1], origin = "1970-01-01", tz = "UTC")
   end_time <- as.POSIXct(numeric_range[2], origin = "1970-01-01", tz = "UTC")
   seq.Date(as.Date(start_time), as.Date(end_time), by = "day")
+}
+
+nearest_value <- function(target, choices) {
+  if (is.na(target) || length(choices) == 0) {
+    return(NA_real_)
+  }
+  choices[which.min(abs(choices - target))]
 }
 
 available_dates <- get_available_dates()
@@ -84,9 +95,6 @@ server <- function(input, output, session) {
 
     sst_lats <- sort(unique(sst_data$latitude))
     sst_lons <- sort(unique(sst_data$longitude))
-    nearest_value <- function(target, choices) {
-      choices[which.min(abs(choices - target))]
-    }
 
     sst_lookup <- sst_data |>
       select(latitude, longitude, sst) |>
