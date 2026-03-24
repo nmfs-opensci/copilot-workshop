@@ -5,7 +5,7 @@ This repository contains an R Shiny app that visualizes mean sea surface tempera
 
 ## Requirements
 
-- R (>= 4.0 recommended)
+- R 4.0 or newer
 - Internet access to NOAA ERDDAP
 
 Install the required packages:

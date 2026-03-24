@@ -8,6 +8,7 @@ erddap_url <- "https://coastwatch.pfeg.noaa.gov/erddap/"
 dataset_id <- "ncdcOisst21Agg_LonPM180"
 CACHE_DIR <- file.path(path.expand("~"), ".cache")
 CACHE_MAX_AGE_HOURS <- 24
+NA_COLOR <- "#000000"
 
 grid_points <- surveyjoin::nwfsc_grid
 grid_points <- grid_points[grid_points$survey == "NWFSC.Combo", , drop = FALSE]
@@ -60,7 +61,10 @@ available_dates <- tryCatch(
     dates
   },
   error = function(e) {
-    message("Failed to fetch ERDDAP metadata: ", conditionMessage(e))
+    message(
+      "Failed to fetch ERDDAP metadata. Check internet connectivity and ERDDAP availability: ",
+      conditionMessage(e)
+    )
     seq(Sys.Date() - 30, Sys.Date(), by = "1 day")
   }
 )
@@ -124,7 +128,7 @@ server <- function(input, output, session) {
         stop("No SST data returned for the selected date.")
       }
 
-      sst_matrix <- with(sst_data, tapply(sst, list(latitude, longitude), mean))
+      sst_matrix <- xtabs(sst ~ latitude + longitude, data = sst_data)
       lat_values <- as.numeric(rownames(sst_matrix))
       lon_values <- as.numeric(colnames(sst_matrix))
 
@@ -155,7 +159,7 @@ server <- function(input, output, session) {
     req(data)
     validate(need(!all(is.na(data$sst)), "No SST values available for the selected date."))
 
-    pal <- colorNumeric(viridis(256), domain = data$sst, na.color = "#808080")
+    pal <- colorNumeric(viridis(256), domain = data$sst, na.color = NA_COLOR)
 
     leaflet(data) %>%
       addProviderTiles("CartoDB.Positron") %>%
