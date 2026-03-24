@@ -20,8 +20,8 @@ pak::pkg_install("DFO-NOAA-Pacific/surveyjoin")
 From the repository root, run:
 
 ```r
-shiny::runApp("app.R")
+shiny::runApp("app.R", port = 3838)
 ```
 
-The app will start on port 3838 by default and display a leaflet map of the NWFSC
-survey grid colored by mean SST for the selected date.
+The app will start on port 3838 and display a leaflet map of the NWFSC survey
+grid colored by mean SST for the selected date.

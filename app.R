@@ -36,8 +36,16 @@ get_available_dates <- function() {
   unique(as.Date(time_values))
 }
 
+cache_path <- file.path(path.expand("~"), ".cache", "nwfsc_sst_dates.rds")
+dir.create(dirname(cache_path), showWarnings = FALSE, recursive = TRUE)
 available_dates <- tryCatch(
-  get_available_dates(),
+  if (file.exists(cache_path)) {
+    readRDS(cache_path)
+  } else {
+    dates <- get_available_dates()
+    saveRDS(dates, cache_path)
+    dates
+  },
   error = function(e) {
     message("Failed to fetch ERDDAP metadata: ", conditionMessage(e))
     Sys.Date()
@@ -62,7 +70,7 @@ ui <- fluidPage(
   )
 )
 
-nearest_index <- function(grid, target) {
+nearest_indices <- function(grid, target) {
   if (length(grid) == 1) {
     return(rep(1L, length(target)))
   }
@@ -107,8 +115,8 @@ server <- function(input, output, session) {
       lat_values <- as.numeric(rownames(sst_matrix))
       lon_values <- as.numeric(colnames(sst_matrix))
 
-      lat_index <- nearest_index(lat_values, grid_points$lat)
-      lon_index <- nearest_index(lon_values, grid_points$lon)
+      lat_index <- nearest_indices(lat_values, grid_points$lat)
+      lon_index <- nearest_indices(lon_values, grid_points$lon)
 
       output_points <- grid_points
       output_points$sst <- sst_matrix[cbind(lat_index, lon_index)]
