@@ -204,25 +204,22 @@ server <- function(input, output, session) {
     point_data <- point_sst()
     pal <- colorNumeric(palette_base, domain = point_data$sst, na.color = "transparent")
 
-    leaflet() |>
+    leaflet(point_data) |>
       addProviderTiles("CartoDB.Positron") |>
       setView(lng = bbox_center["lng"], lat = bbox_center["lat"], zoom = 6) |>
       addCircleMarkers(
-        data = point_data,
-        lng = point_data[[lon_column]],
-        lat = point_data[[lat_column]],
         radius = 5,
         stroke = TRUE,
         weight = 0.6,
         color = "#2c3e50",
-        fillColor = pal(point_data$sst),
+        fillColor = ~pal(sst),
         fillOpacity = 0.8,
-        popup = point_data$popup_text
+        popup = ~popup_text
       ) |>
       addLegend(
         position = "bottomright",
         pal = pal,
-        values = point_data$sst,
+        values = ~sst,
         title = "SST (°C)"
       )
   })
