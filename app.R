@@ -67,6 +67,7 @@ if (inherits(nwfsc_grid_raw, "sf")) {
 palette_base <- viridis(256)
 
 id_candidates <- names(nwfsc_points)[
+  grepl("point", names(nwfsc_points), ignore.case = TRUE) |
   grepl("grid", names(nwfsc_points), ignore.case = TRUE) |
     grepl("id$", names(nwfsc_points), ignore.case = TRUE)
 ]
