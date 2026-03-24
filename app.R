@@ -66,11 +66,16 @@ if (inherits(nwfsc_grid_raw, "sf")) {
 
 palette_base <- viridis(256)
 
-id_candidates <- names(nwfsc_points)[
-  grepl("point", names(nwfsc_points), ignore.case = TRUE) |
-  grepl("grid", names(nwfsc_points), ignore.case = TRUE) |
-    grepl("id$", names(nwfsc_points), ignore.case = TRUE)
+point_candidates <- names(nwfsc_points)[
+  grepl("point", names(nwfsc_points), ignore.case = TRUE)
 ]
+grid_candidates <- names(nwfsc_points)[
+  grepl("grid", names(nwfsc_points), ignore.case = TRUE)
+]
+id_suffix_candidates <- names(nwfsc_points)[
+  grepl("id$", names(nwfsc_points), ignore.case = TRUE)
+]
+id_candidates <- unique(c(point_candidates, grid_candidates, id_suffix_candidates))
 if (length(id_candidates) == 0) {
   nwfsc_points$point_id <- seq_len(nrow(nwfsc_points))
   id_column <- "point_id"
