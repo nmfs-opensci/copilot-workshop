@@ -6,6 +6,8 @@ library(viridis)
 
 erddap_url <- "https://coastwatch.pfeg.noaa.gov/erddap/"
 dataset_id <- "ncdcOisst21Agg_LonPM180"
+CACHE_DIR <- file.path(path.expand("~"), ".cache")
+CACHE_MAX_AGE_HOURS <- 24
 
 grid_points <- surveyjoin::nwfsc_grid
 grid_points <- grid_points[grid_points$survey == "NWFSC.Combo", , drop = FALSE]
@@ -36,9 +38,9 @@ get_available_dates <- function() {
   unique(as.Date(time_values))
 }
 
-cache_path <- file.path(path.expand("~"), ".cache", "nwfsc_sst_dates.rds")
+cache_path <- file.path(CACHE_DIR, "nwfsc_sst_dates.rds")
 dir.create(dirname(cache_path), showWarnings = FALSE, recursive = TRUE)
-cache_valid <- function(path, max_age_hours = 24) {
+cache_valid <- function(path, max_age_hours = CACHE_MAX_AGE_HOURS) {
   if (!file.exists(path)) {
     return(FALSE)
   }
@@ -55,7 +57,7 @@ available_dates <- tryCatch(
   },
   error = function(e) {
     message("Failed to fetch ERDDAP metadata: ", conditionMessage(e))
-    Sys.Date()
+    seq(Sys.Date() - 30, Sys.Date(), by = "1 day")
   }
 )
 
