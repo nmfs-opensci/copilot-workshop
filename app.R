@@ -38,8 +38,15 @@ get_available_dates <- function() {
 
 cache_path <- file.path(path.expand("~"), ".cache", "nwfsc_sst_dates.rds")
 dir.create(dirname(cache_path), showWarnings = FALSE, recursive = TRUE)
+cache_valid <- function(path, max_age_hours = 24) {
+  if (!file.exists(path)) {
+    return(FALSE)
+  }
+  age_hours <- as.numeric(difftime(Sys.time(), file.info(path)$mtime, units = "hours"))
+  age_hours <= max_age_hours
+}
 available_dates <- tryCatch(
-  if (file.exists(cache_path)) {
+  if (cache_valid(cache_path)) {
     readRDS(cache_path)
   } else {
     dates <- get_available_dates()
