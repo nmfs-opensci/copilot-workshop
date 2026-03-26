@@ -39,7 +39,7 @@ date_range <- get_date_range()
 # ── UI ───────────────────────────────────────────────────────────────────────
 
 ui <- fluidPage(
-  titlePanel("NWFSC Survey Grid – Sea Surface Temperature"),
+  titlePanel("NWFSC Survey Grid - Sea Surface Temperature"),
 
   sidebarLayout(
     sidebarPanel(
@@ -184,7 +184,7 @@ server <- function(input, output, session) {
     row <- df[df$cell_id == as.integer(click$id), ]
     if (nrow(row) == 0) return()
 
-    mean_sst <- round(mean(row$sst, na.rm = TRUE), 2)
+    mean_sst <- round(row$sst, 2)
 
     output$click_info <- renderText({
       paste0(

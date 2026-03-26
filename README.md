@@ -1,10 +1,10 @@
 # NWFSC Survey Grid – SST Shiny App
 
-An interactive R Shiny application that visualises **Mean Sea Surface Temperature (SST)** on the NWFSC survey grid points along the US West Coast.
+An interactive R Shiny application that visualizes **Mean Sea Surface Temperature (SST)** on the NWFSC survey grid points along the US West Coast.
 
 ## Features
 
-* Leaflet map centred on the WA/OR coast.
+* Leaflet map centered on the WA/OR coast.
 * Date picker populated with the valid date range from the NOAA ERDDAP server.
 * Grid points coloured by SST using the **viridis** colour palette with a legend.
 * Click any point to see its **Grid Cell ID**, coordinates, and SST value in a popup and sidebar panel.
