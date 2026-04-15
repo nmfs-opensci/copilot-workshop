@@ -7,10 +7,14 @@ library(dplyr)
 
 # ── Static data loaded once at startup ──────────────────────────────────────
 
-# Load NWFSC.Combo grid points
+# Load NWFSC.Combo grid points.
+# Sort by depth ascending (shallowest = closest to coast) so that when we
+# thin to every 3rd point we keep the most coastal observations first.
 grid_pts <- surveyjoin::nwfsc_grid |>
   dplyr::filter(survey == "NWFSC.Combo") |>
+  dplyr::arrange(depth_m) |>
   dplyr::mutate(cell_id = dplyr::row_number()) |>
+  dplyr::filter(dplyr::row_number() %% 3 == 1) |>
   dplyr::select(cell_id, lon, lat)
 
 # Fetch available date range from ERDDAP metadata
